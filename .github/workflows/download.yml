@@ -1,0 +1,43 @@
+name: Download from URL and commit into repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: 'URL of the file to download'
+        required: true
+        type: string
+      filename:
+        description: 'Filename to save as (optional)'
+        required: false
+        type: string
+      target_path:
+        description: 'Path in repo (default: ./)'
+        required: false
+        default: './'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  download-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download file
+        run: |
+          FILENAME="${{ github.event.inputs.filename }}"
+          if [ -z "$FILENAME" ]; then
+            FILENAME=$(basename "${{ github.event.inputs.download_url }}" | cut -d '?' -f1)
+          fi
+          curl -L "${{ github.event.inputs.download_url }}" -o "${{ github.event.inputs.target_path }}/$FILENAME"
+      
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Download: ${{ github.event.inputs.download_url }}" || echo "No changes to commit"
+          git push
